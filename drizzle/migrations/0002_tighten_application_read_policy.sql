@@ -1,0 +1,1 @@
+DROP POLICY "Authenticated users can read applications" ON public.ambassador_applications;

@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791720394867,
+      "tag": "0000_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791724974252,
+      "tag": "0001_phase1_profiles_roles_application_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791724994626,
+      "tag": "0002_tighten_application_read_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791977276729,
+      "tag": "0003_crew_events_shifts_passport",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792527046998,
+      "tag": "0004_points_ledger_and_onboarding_journey",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792557893894,
+      "tag": "0005_track_a_readiness_referrals",
+      "breakpoints": true
+    }
+  ]
+}
