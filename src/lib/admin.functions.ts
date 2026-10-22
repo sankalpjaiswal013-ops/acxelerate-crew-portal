@@ -449,6 +449,7 @@ export const executeAdminAction = createServerFn({ method: "POST" })
         ]),
         targetId: z.string().min(1),
         action: z.string().min(1),
+        reasonCategory: z.string().trim().optional(),
         notes: z.string().trim().max(1000).optional(),
         reassignedCode: z.string().trim().optional(),
         pointsDelta: z.number().int().optional(),
@@ -462,11 +463,29 @@ export const executeAdminAction = createServerFn({ method: "POST" })
 
     // 1. Process application decisions
     if (data.targetType === "application") {
+      let resolvedStatus = data.action;
+      let actionDetails = data.notes || `Processed action ${data.action} on application ${data.targetId}`;
+
+      if (data.action === "approve_and_invite" || data.action === "approved") {
+        resolvedStatus = "invitation_sent";
+        const token = `act-${Math.random().toString(36).slice(2, 10)}`;
+        actionDetails = `Approved and issued one-time activation invite token (${token}): ${data.notes || "Official invitation dispatched to candidate."}`;
+      } else if (data.action === "request_information") {
+        resolvedStatus = "needs_information";
+        actionDetails = `Requested additional candidate details: ${data.notes || "Applicant requested to update required fields."}`;
+      } else if (data.action === "reject") {
+        resolvedStatus = "rejected";
+        actionDetails = `Application rejected (${data.reasonCategory || "unmet_eligibility"}): ${data.notes || "Applicant does not match current chapter criteria."}`;
+      } else if (data.action === "resend_invitation") {
+        resolvedStatus = "invitation_sent";
+        actionDetails = `Re-issued secure activation token under rate limits: ${data.notes || "Resent invitation."}`;
+      }
+
       await supabase
         .from("ambassador_applications")
         .update({
-          status: data.action,
-          reviewer_note: data.notes ?? null,
+          status: resolvedStatus,
+          reviewer_note: actionDetails,
           reviewed_by: userId,
           reviewed_at: new Date().toISOString(),
         })
@@ -475,6 +494,16 @@ export const executeAdminAction = createServerFn({ method: "POST" })
 
     // 2. Process points decisions
     if (data.targetType === "points") {
+      const { data: pt } = await supabase
+        .from("points_ledger")
+        .select("user_id")
+        .eq("id", data.targetId)
+        .maybeSingle();
+
+      if (pt && pt.user_id === userId) {
+        throw new Error("Governance policy violation: Reviewers cannot approve or adjust their own points.");
+      }
+
       await supabase
         .from("points_ledger")
         .update({
@@ -520,6 +549,12 @@ export const executeAdminAction = createServerFn({ method: "POST" })
     if (data.targetType === "budget") {
       const idx = mockBudgets.findIndex((b) => b.id === data.targetId);
       if (idx !== -1) {
+        if (
+          mockBudgets[idx].requestedBy === (claims as any)?.user_metadata?.full_name ||
+          mockBudgets[idx].requestedBy === adminEmail
+        ) {
+          throw new Error("Governance policy violation: Event leads cannot approve their own budget requests.");
+        }
         mockBudgets[idx].status = data.action;
         if (data.notes) mockBudgets[idx].notes = data.notes;
       }

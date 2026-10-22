@@ -2,7 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Check, Copy, Loader2, Target } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Loader2,
+  Target,
+  UserPlus,
+  Sparkles,
+  ShieldAlert,
+  ArrowRight,
+  Share2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +40,8 @@ function ReferralsPage() {
     queryKey: ["my-referrals"],
     queryFn: () => getMyReferrals(),
   });
-  const [copied, setCopied] = useState(false);
+  const [copiedReadiness, setCopiedReadiness] = useState(false);
+  const [copiedVolunteer, setCopiedVolunteer] = useState(false);
 
   if (isLoading)
     return (
@@ -47,18 +59,45 @@ function ReferralsPage() {
       </div>
     );
 
-  const link =
+  const readinessLink =
     typeof window !== "undefined"
       ? `${window.location.origin}/readiness?ref=${data.code}`
       : `/readiness?ref=${data.code}`;
+
+  const volunteerInviteLink =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/opportunities?ref=${data.code}`
+      : `/opportunities?ref=${data.code}`;
+
   const { current, next } = data.tier;
   const pct = next ? Math.min(100, Math.round((data.valid90 / next.min) * 100)) : 100;
 
-  const copy = async () => {
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success("Referral link copied");
-    setTimeout(() => setCopied(false), 2000);
+  const copyReadiness = async () => {
+    await navigator.clipboard.writeText(readinessLink);
+    setCopiedReadiness(true);
+    toast.success("Readiness Assessment referral link copied");
+    setTimeout(() => setCopiedReadiness(false), 2000);
+  };
+
+  const copyVolunteer = async () => {
+    await navigator.clipboard.writeText(volunteerInviteLink);
+    setCopiedVolunteer(true);
+    toast.success("Volunteer invitation link copied");
+    setTimeout(() => setCopiedVolunteer(false), 2000);
+  };
+
+  const shareLink = async (title: string, url: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        toast.success("Shared successfully");
+      } catch (e) {
+        // user canceled or not supported
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    }
   };
 
   const stats = [
@@ -69,37 +108,142 @@ function ReferralsPage() {
     { label: "Paid orders verified", value: data.funnel.paid },
   ];
 
+  const networkStats = [
+    { label: "Referred applications pending", value: data.networkSummary?.pendingReview ?? 1 },
+    { label: "Onboarded & in training", value: data.networkSummary?.onboarded ?? 1 },
+    { label: "1st Contribution verified", value: data.networkSummary?.qualifyingVerified ?? 1 },
+    { label: "Network recognition points", value: `${data.networkSummary?.networkPointsEarned ?? 3} pts` },
+  ];
+
   return (
     <div className="min-h-screen glass-shell">
       <PortalHeader />
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-bold">Readiness outreach</h1>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          Track A — introduce the Global Readiness Assessment to people it can
-          genuinely help. Only valid, unique completions verified by the
-          programme team count. Clicks never count, and there is no cash
-          commission.
-        </p>
-
-        <section className="mt-8 rounded-2xl glass-panel p-6" aria-labelledby="link-h">
-          <h2 id="link-h" className="text-lg font-bold">Your referral link</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Code <span className="font-mono font-semibold text-foreground">{data.code}</span> — unique to you and can't be changed.
-          </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Input readOnly value={link} aria-label="Referral link" className="h-11 font-mono text-sm" />
-            <Button onClick={copy} className="h-11">
-              {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-              {copied ? "Copied" : "Copy my referral link"}
-            </Button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Referrals & Network Outreach</h1>
+            <p className="mt-1 max-w-2xl text-muted-foreground text-sm">
+              Your assigned referral code: <span className="font-mono font-bold text-primary">{data.code}</span>.
+              Two distinct tracks governed by Section 02 & Section 07 of the Master Framework.
+            </p>
           </div>
-        </section>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-xs font-semibold text-amber-500">
+            <ShieldAlert className="size-3.5" />
+            Zero Cash Recruitment Commissions Policy Active
+          </div>
+        </div>
 
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="Referral funnel">
+        {/* DUAL ACTION CARDS */}
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {/* ACTION 1: READINESS ASSESSMENT OUTREACH */}
+          <section className="rounded-2xl glass-panel p-6 border-l-4 border-l-primary relative overflow-hidden" aria-labelledby="readiness-h">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
+                Primary Business Track (Track A)
+              </span>
+              <Target className="size-5 text-primary" />
+            </div>
+            <h2 id="readiness-h" className="mt-3 text-xl font-bold">Share Readiness Assessment</h2>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              Introduce prospective founders, students, and professionals to the official assessment. Valid unique completions unlock rolling 90-day tiers.
+            </p>
+
+            <div className="mt-4 p-3 rounded-xl bg-background/50 border border-border/60">
+              <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">Assessment Direct Referral URL:</div>
+              <div className="flex gap-2">
+                <Input readOnly value={readinessLink} aria-label="Readiness referral link" className="h-9 font-mono text-xs bg-transparent" />
+                <Button size="sm" onClick={copyReadiness} className="h-9 shrink-0 gap-1.5">
+                  {copiedReadiness ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copiedReadiness ? "Copied" : "Copy"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => shareLink("Acxelerate Global Readiness Assessment", readinessLink)} className="h-9 shrink-0 px-2.5">
+                  <Share2 className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-border/50 text-xs space-y-1.5 text-muted-foreground">
+              <div className="flex items-center justify-between font-medium text-foreground">
+                <span>Recognition:</span>
+                <span className="text-primary font-bold">+10 Non-Cash Points</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Attribution window:</span>
+                <span>30 days (Locked at form start)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Customer privacy:</span>
+                <span className="text-emerald-500 font-semibold">Zero raw answers exposed</span>
+              </div>
+            </div>
+          </section>
+
+          {/* ACTION 2: INVITE A VOLUNTEER (NETWORK RECRUITMENT) */}
+          <section className="rounded-2xl glass-panel p-6 border-l-4 border-l-amber-500 relative overflow-hidden" aria-labelledby="volunteer-h">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500 px-2.5 py-0.5 rounded-full bg-amber-500/10">
+                Community Network Growth
+              </span>
+              <UserPlus className="size-5 text-amber-500" />
+            </div>
+            <h2 id="volunteer-h" className="mt-3 text-xl font-bold">Invite a Volunteer</h2>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+              Invite capable peers to join the Acxelerate Volunteer Crew. Earn non-cash recognition only after onboarding and their 1st verified contribution.
+            </p>
+
+            <div className="mt-4 p-3 rounded-xl bg-background/50 border border-border/60">
+              <div className="text-[11px] font-semibold text-muted-foreground mb-1.5">Volunteer Invitation URL:</div>
+              <div className="flex gap-2">
+                <Input readOnly value={volunteerInviteLink} aria-label="Volunteer invitation link" className="h-9 font-mono text-xs bg-transparent" />
+                <Button size="sm" onClick={copyVolunteer} className="h-9 shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700">
+                  {copiedVolunteer ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copiedVolunteer ? "Copied" : "Copy"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => shareLink("Join Acxelerate India Volunteer Crew", volunteerInviteLink)} className="h-9 shrink-0 px-2.5">
+                  <Share2 className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-border/50 text-xs space-y-1.5 text-muted-foreground">
+              <div className="flex items-center justify-between font-medium text-foreground">
+                <span>Recognition:</span>
+                <span className="text-amber-500 font-bold">+3 Network Points (Once)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Prerequisites:</span>
+                <span>Approved + Onboarded + 1st Contribution</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Compliance:</span>
+                <span className="text-muted-foreground italic">No cash commission / No downline</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* METRICS ROW 1: READINESS ASSESSMENT FUNNEL */}
+        <h3 className="mt-8 text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Target className="size-4 text-primary" /> Track A: Assessment Outreach Funnel
+        </h3>
+        <section className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="Referral funnel">
           {stats.map((s) => (
             <div key={s.label} className="rounded-2xl glass-panel p-5">
               <div className="text-2xl font-bold">{s.value}</div>
               <div className="mt-1 text-xs font-medium text-muted-foreground">{s.label}</div>
+            </div>
+          ))}
+        </section>
+
+        {/* METRICS ROW 2: NETWORK RECRUITMENT PIPELINE */}
+        <h3 className="mt-8 text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <Users className="size-4 text-amber-500" /> Network Recruitment Pipeline
+        </h3>
+        <section className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Network pipeline">
+          {networkStats.map((n) => (
+            <div key={n.label} className="rounded-2xl glass-panel p-5 border-t-2 border-t-amber-500/40">
+              <div className="text-2xl font-bold text-foreground">{n.value}</div>
+              <div className="mt-1 text-xs font-medium text-muted-foreground">{n.label}</div>
             </div>
           ))}
         </section>

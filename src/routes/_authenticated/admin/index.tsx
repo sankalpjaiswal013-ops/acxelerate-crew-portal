@@ -109,6 +109,7 @@ function AdminControlCenter() {
     actionName: string;
     needsNotes?: boolean;
     needsCode?: boolean;
+    needsReasonCategory?: boolean;
   }>({
     open: false,
     title: "",
@@ -120,6 +121,7 @@ function AdminControlCenter() {
 
   const [actionNotes, setActionNotes] = useState("");
   const [reassignCode, setReassignCode] = useState("");
+  const [reasonCategory, setReasonCategory] = useState("unmet_eligibility");
   const [submittingAction, setSubmittingAction] = useState(false);
 
   // Manual point adjustment modal state
@@ -138,6 +140,7 @@ function AdminControlCenter() {
           action: confirmDialog.actionName,
           notes: actionNotes,
           reassignedCode: reassignCode || undefined,
+          reasonCategory: confirmDialog.needsReasonCategory ? reasonCategory : undefined,
         },
       });
       toast.success(`Action successfully executed: ${confirmDialog.actionName.toUpperCase()}`);
@@ -145,6 +148,7 @@ function AdminControlCenter() {
       setSelectedItem(null);
       setActionNotes("");
       setReassignCode("");
+      setReasonCategory("unmet_eligibility");
       queryClient.invalidateQueries({ queryKey: ["admin-queue-data"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
     } catch (err) {
@@ -609,7 +613,7 @@ function AdminControlCenter() {
                               {app.status}
                             </span>
                           </td>
-                          <td className="py-3 text-right space-x-1.5">
+                          <td className="py-3 text-right space-x-1.5 whitespace-nowrap">
                             <Button
                               size="sm"
                               variant="ghost"
@@ -618,7 +622,8 @@ function AdminControlCenter() {
                             >
                               <Eye className="size-3.5" /> Inspect
                             </Button>
-                            {app.status !== "approved" && (
+
+                            {app.status !== "invitation_sent" && app.status !== "active" && (
                               <Button
                                 size="sm"
                                 className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
@@ -626,15 +631,79 @@ function AdminControlCenter() {
                                   setConfirmDialog({
                                     open: true,
                                     title: `Approve Candidate: ${app.full_name}`,
-                                    description: "Approving this volunteer will issue their onboarding invitation and volunteer profile.",
+                                    description: "Approving this volunteer will issue a secure, single-use activation invitation URL and record an audit log.",
                                     actionType: "application",
                                     targetId: app.id,
-                                    actionName: "approved",
+                                    actionName: "approve_and_invite",
                                     needsNotes: true,
                                   })
                                 }
                               >
-                                Approve
+                                Approve & Invite
+                              </Button>
+                            )}
+
+                            {app.status === "invitation_sent" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                                onClick={() =>
+                                  setConfirmDialog({
+                                    open: true,
+                                    title: `Resend Activation Link: ${app.full_name}`,
+                                    description: "Re-issue a single-use activation invitation token subject to rate-limiting.",
+                                    actionType: "application",
+                                    targetId: app.id,
+                                    actionName: "resend_invitation",
+                                    needsNotes: true,
+                                  })
+                                }
+                              >
+                                Resend Invite
+                              </Button>
+                            )}
+
+                            {["submitted", "under_review"].includes(app.status) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() =>
+                                  setConfirmDialog({
+                                    open: true,
+                                    title: `Request Details: ${app.full_name}`,
+                                    description: "Request missing profile information or clarification from candidate.",
+                                    actionType: "application",
+                                    targetId: app.id,
+                                    actionName: "request_information",
+                                    needsNotes: true,
+                                  })
+                                }
+                              >
+                                Request Info
+                              </Button>
+                            )}
+
+                            {app.status !== "rejected" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs text-red-500 hover:bg-red-500/10"
+                                onClick={() =>
+                                  setConfirmDialog({
+                                    open: true,
+                                    title: `Reject Candidate: ${app.full_name}`,
+                                    description: "Mandatory reason category and polite rejection feedback recorded in audit timeline.",
+                                    actionType: "application",
+                                    targetId: app.id,
+                                    actionName: "reject",
+                                    needsNotes: true,
+                                    needsReasonCategory: true,
+                                  })
+                                }
+                              >
+                                Reject
                               </Button>
                             )}
                           </td>
@@ -1276,6 +1345,23 @@ function AdminControlCenter() {
                     className="mt-1 h-9 uppercase font-mono"
                     required
                   />
+                </div>
+              )}
+
+              {confirmDialog.needsReasonCategory && (
+                <div>
+                  <Label className="text-xs font-semibold">Rejection / Decision Category</Label>
+                  <select
+                    value={reasonCategory}
+                    onChange={(e) => setReasonCategory(e.target.value)}
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-background px-3 text-xs"
+                  >
+                    <option value="unmet_eligibility">Unmet eligibility criteria</option>
+                    <option value="duplicate_applicant">Duplicate applicant</option>
+                    <option value="capacity_reached">City chapter capacity reached</option>
+                    <option value="incomplete_submission">Incomplete submission / unable to contact</option>
+                    <option value="other">Other operational reason</option>
+                  </select>
                 </div>
               )}
 

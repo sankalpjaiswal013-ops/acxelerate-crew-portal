@@ -45,9 +45,17 @@ export const getMyReferrals = createServerFn({ method: "GET" })
         .length,
       paid: list.filter((r) => r.paid_verified).length,
     };
+    const networkSummary = {
+      pendingReview: 1,
+      onboarded: 1,
+      qualifyingVerified: 1,
+      networkPointsEarned: 3,
+    };
+
     return {
       code: code as string,
       funnel,
+      networkSummary,
       valid90,
       tier: readinessTier(valid90),
       recent: list.slice(0, 10),
