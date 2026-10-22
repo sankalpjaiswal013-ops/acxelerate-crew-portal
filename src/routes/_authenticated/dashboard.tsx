@@ -307,8 +307,13 @@ function Dashboard() {
           <div className="flex items-center gap-2">
             {isReviewer && (
               <>
+                <Button asChild variant="outline" size="sm" className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10">
+                  <a href="/admin">
+                    <Shield className="size-3.5 mr-1" /> Admin Console
+                  </a>
+                </Button>
                 <Button asChild variant="outline" size="sm">
-                  <a href="/admin/applications">Review applications</a>
+                  <a href="/admin/applications">Applications</a>
                 </Button>
                 <Button asChild variant="outline" size="sm">
                   <a href="/admin/events">Event console</a>
